@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+build/
+dist/
+DerivedData/
+*.xcuserstate
+project.xcworkspace/xcuserdata/
+*.xcuserdatad/
+xcuserdata/
+
+# Swift Package Manager
+.build/
+
+# Archives and Packages
+*.xcarchive
+*.dmg
+*.zip
