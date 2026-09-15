@@ -26,7 +26,6 @@ extension Notification.Name {
 
 struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Button("Clipboard Library") {
@@ -46,8 +45,9 @@ struct MenuBarView: View {
         Divider()
 
         Button("Settings...") {
-            openSettings()
             NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: "main")
+            NotificationCenter.default.post(name: .selectNavigationSection, object: NavigationSection.settings)
         }
         .keyboardShortcut(",", modifiers: .command)
 
@@ -133,15 +133,18 @@ struct ClipboardLibraryApp: App {
 
 
     var body: some Scene {
-
         WindowGroup(id: "main") {
             ContentView()
         }
         .modelContainer(container)
-
-        Settings {
-            SettingsView()
-                .modelContainer(container)
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings...") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    NotificationCenter.default.post(name: .selectNavigationSection, object: NavigationSection.settings)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
         }
 
         MenuBarExtra("Clipboard Library", systemImage: "doc.on.clipboard") {

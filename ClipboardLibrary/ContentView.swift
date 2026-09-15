@@ -6,6 +6,7 @@ enum NavigationSection: String, CaseIterable, Identifiable {
     case library = "Library"
     case favorites = "Favorites"
     case calendar = "Calendar"
+    case settings = "Settings"
 
     var id: String { rawValue }
 
@@ -14,6 +15,7 @@ enum NavigationSection: String, CaseIterable, Identifiable {
         case .library: return "doc.on.clipboard"
         case .favorites: return "star.fill"
         case .calendar: return "calendar"
+        case .settings: return "gearshape"
         }
     }
 }
@@ -21,7 +23,6 @@ enum NavigationSection: String, CaseIterable, Identifiable {
 struct ContentView: View {
 
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.openSettings) private var openSettings
     @Query(sort: \ClipboardItem.createdAt, order: .reverse)
     private var clipboardItems: [ClipboardItem]
 
@@ -86,6 +87,8 @@ struct ContentView: View {
             baseItems = favoriteItems
         case .calendar:
             baseItems = calendarItems
+        case .settings:
+            return []
         }
 
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -210,14 +213,11 @@ struct ContentView: View {
                 .tag(NavigationSection.calendar)
             }
 
-            Section {
-                Button {
-                    openSettings()
-                } label: {
-                    Label("Settings", systemImage: "gearshape")
-                        .foregroundStyle(.primary)
+            Section("Preferences") {
+                NavigationLink(value: NavigationSection.settings) {
+                    Label("Settings", systemImage: NavigationSection.settings.icon)
                 }
-                .buttonStyle(.plain)
+                .tag(NavigationSection.settings)
             }
         }
         .listStyle(.sidebar)
@@ -226,7 +226,17 @@ struct ContentView: View {
 
     // MARK: - Detail Content
 
+    @ViewBuilder
     private var detailView: some View {
+        if selectedSection == .settings {
+            SettingsView()
+                .navigationTitle("Settings")
+        } else {
+            clipboardListView
+        }
+    }
+
+    private var clipboardListView: some View {
         VStack(spacing: 0) {
             // Accessibility banner in Favorites tab
             if selectedSection == .favorites && !shortcutManager.isAccessibilityGranted && favoriteCount > 0 {
@@ -377,11 +387,13 @@ struct ContentView: View {
             // Settings button
             ToolbarItem(placement: .automatic) {
                 Button {
-                    openSettings()
+                    withAnimation {
+                        selectedSection = .settings
+                    }
                 } label: {
                     Image(systemName: "gearshape")
                 }
-                .help("Settings (⌘,)")
+                .help("Settings")
             }
         }
     }
@@ -474,7 +486,7 @@ struct ContentView: View {
             Spacer()
 
             Button("Grant Permission") {
-                openSettings()
+                GlobalShortcutManager.shared.openAccessibilitySettings()
             }
             .font(.caption2)
             .buttonStyle(.bordered)
@@ -538,6 +550,9 @@ struct ContentView: View {
                 } description: {
                     Text("No clipboard items were recorded on \(formattedDateHeader).")
                 }
+
+            case .settings:
+                EmptyView()
             }
         }
     }
@@ -585,6 +600,7 @@ struct ContentView: View {
         case .library: return "Clipboard Library"
         case .favorites: return "Favorites"
         case .calendar: return "Calendar History"
+        case .settings: return "Settings"
         }
     }
 
@@ -596,6 +612,8 @@ struct ContentView: View {
             return "Favorites (\(displayedItems.count))"
         case .calendar:
             return "\(formattedDateHeader) (\(displayedItems.count))"
+        case .settings:
+            return ""
         }
     }
 
@@ -620,6 +638,7 @@ struct ContentView: View {
         case .library: return "Search today's clipboard..."
         case .favorites: return "Search favorites..."
         case .calendar: return "Search items on \(formattedDateHeader)..."
+        case .settings: return "Search settings..."
         }
     }
 }

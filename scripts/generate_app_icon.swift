@@ -1,18 +1,27 @@
 import AppKit
 import CoreGraphics
+import UniformTypeIdentifiers
 
-func createIcon(size: CGFloat) -> NSImage {
-    let image = NSImage(size: NSSize(width: size, height: size))
-    image.lockFocus()
-    guard let ctx = NSGraphicsContext.current?.cgContext else {
-        image.unlockFocus()
-        return image
+func renderIcon(pixelSize: Int) -> CGImage? {
+    let width = pixelSize
+    let height = pixelSize
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    guard let ctx = CGContext(
+        data: nil,
+        width: width,
+        height: height,
+        bitsPerComponent: 8,
+        bytesPerRow: 4 * width,
+        space: colorSpace,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else {
+        return nil
     }
 
-    let scale = size / 1024.0
+    let scale = CGFloat(pixelSize) / 1024.0
 
     // Background Canvas
-    ctx.clear(CGRect(x: 0, y: 0, width: size, height: size))
+    ctx.clear(CGRect(x: 0, y: 0, width: width, height: height))
 
     // macOS Standard Squircle Path (Base 1024: inset 80, size 864, corner 192)
     let squircleRect = CGRect(x: 80 * scale, y: 80 * scale, width: 864 * scale, height: 864 * scale)
@@ -32,7 +41,6 @@ func createIcon(size: CGFloat) -> NSImage {
     ctx.addPath(squirclePath)
     ctx.clip()
 
-    let colorSpace = CGColorSpaceCreateDeviceRGB()
     let bgColors = [
         CGColor(red: 0.16, green: 0.38, blue: 0.95, alpha: 1.0), // Royal Blue
         CGColor(red: 0.09, green: 0.18, blue: 0.55, alpha: 1.0), // Deep Navy
@@ -114,7 +122,7 @@ func createIcon(size: CGFloat) -> NSImage {
     // Paper Content Lines (representing text clippings)
     ctx.saveGState()
     let lineColors: [CGColor] = [
-        CGColor(red: 0.25, green: 0.45, blue: 0.85, alpha: 0.8), // Accent line (title)
+        CGColor(red: 0.25, green: 0.45, blue: 0.85, alpha: 0.8),
         CGColor(red: 0.65, green: 0.70, blue: 0.78, alpha: 0.7),
         CGColor(red: 0.65, green: 0.70, blue: 0.78, alpha: 0.7),
         CGColor(red: 0.65, green: 0.70, blue: 0.78, alpha: 0.5),
@@ -192,24 +200,26 @@ func createIcon(size: CGFloat) -> NSImage {
 
     ctx.restoreGState() // Pop Squircle Clip
 
-    image.unlockFocus()
-    return image
+    return ctx.makeImage()
 }
 
-func savePNG(image: NSImage, path: String) {
-    guard let tiff = image.tiffRepresentation,
-          let bitmap = NSBitmapImageRep(data: tiff),
-          let png = bitmap.representation(using: .png, properties: [:]) else {
-        print("❌ Failed to create PNG for \(path)")
+func savePNG(image: CGImage, path: String) {
+    let url = URL(fileURLWithPath: path) as CFURL
+    guard let destination = CGImageDestinationCreateWithURL(url, UTType.png.identifier as CFString, 1, nil) else {
+        print("❌ Failed to create image destination for \(path)")
         return
     }
-    try? png.write(to: URL(fileURLWithPath: path))
-    print("✅ Generated: \(path)")
+    CGImageDestinationAddImage(destination, image, nil)
+    if CGImageDestinationFinalize(destination) {
+        print("✅ Generated exact \(image.width)x\(image.height): \(path)")
+    } else {
+        print("❌ Failed to finalize PNG for \(path)")
+    }
 }
 
 let iconSetPath = "ClipboardLibrary/Assets.xcassets/AppIcon.appiconset"
 
-let iconSizes: [(String, CGFloat)] = [
+let iconSizes: [(String, Int)] = [
     ("icon_16x16.png", 16),
     ("icon_16x16@2x.png", 32),
     ("icon_32x32.png", 32),
@@ -222,9 +232,10 @@ let iconSizes: [(String, CGFloat)] = [
     ("icon_512x512@2x.png", 1024)
 ]
 
-for (fileName, size) in iconSizes {
-    let img = createIcon(size: size)
-    let fullPath = "\(iconSetPath)/\(fileName)"
-    savePNG(image: img, path: fullPath)
+for (fileName, pixelSize) in iconSizes {
+    if let img = renderIcon(pixelSize: pixelSize) {
+        let fullPath = "\(iconSetPath)/\(fileName)"
+        savePNG(image: img, path: fullPath)
+    }
 }
-print("🎉 All icons created successfully.")
+print("🎉 All icons created with exact pixel dimensions.")

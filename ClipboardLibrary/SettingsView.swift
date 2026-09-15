@@ -3,33 +3,63 @@ import SwiftData
 
 struct SettingsView: View {
 
-    var body: some View {
-        TabView {
-            GeneralSettingsView()
-                .tabItem {
-                    Label("General", systemImage: "gearshape")
-                }
-                .tag("general")
+    @State private var selectedTab: SettingsTab = .general
 
-            ShortcutSettingsView()
-                .tabItem {
-                    Label("Shortcuts", systemImage: "keyboard")
-                }
-                .tag("shortcuts")
+    enum SettingsTab: String, CaseIterable, Identifiable {
+        case general = "General"
+        case shortcuts = "Shortcuts"
+        case privacy = "Privacy"
+        case about = "About"
 
-            PrivacySettingsView()
-                .tabItem {
-                    Label("Privacy", systemImage: "lock.shield")
-                }
-                .tag("privacy")
+        var id: String { rawValue }
 
-            AboutSettingsView()
-                .tabItem {
-                    Label("About", systemImage: "info.circle")
-                }
-                .tag("about")
+        var icon: String {
+            switch self {
+            case .general: return "gearshape"
+            case .shortcuts: return "keyboard"
+            case .privacy: return "lock.shield"
+            case .about: return "info.circle"
+            }
         }
-        .frame(width: 520, height: 480)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Segmented Tab Selector
+            HStack {
+                Picker("Settings Section", selection: $selectedTab) {
+                    ForEach(SettingsTab.allCases) { tab in
+                        Label(tab.rawValue, systemImage: tab.icon)
+                            .tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(maxWidth: 460)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(Color(NSColor.windowBackgroundColor))
+
+            Divider()
+
+            // Active Tab View
+            Group {
+                switch selectedTab {
+                case .general:
+                    GeneralSettingsView()
+                case .shortcuts:
+                    ShortcutSettingsView()
+                case .privacy:
+                    PrivacySettingsView()
+                case .about:
+                    AboutSettingsView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
