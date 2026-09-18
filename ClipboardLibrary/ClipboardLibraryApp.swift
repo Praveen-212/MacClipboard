@@ -25,9 +25,30 @@ extension Notification.Name {
 }
 
 struct MenuBarView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
 
+    @Query(sort: \ClipboardItem.createdAt, order: .reverse)
+    private var allItems: [ClipboardItem]
+
+    private var recentItems: [ClipboardItem] {
+        Array(allItems.filter { $0.isInHistory ?? true }.prefix(10))
+    }
+
     var body: some View {
+        if recentItems.isEmpty {
+            Button("No Recent Clipboard Items") {}
+                .disabled(true)
+        } else {
+            ForEach(recentItems) { item in
+                Button(displayTitle(for: item.content)) {
+                    selectItem(item)
+                }
+            }
+        }
+
+        Divider()
+
         Button("Clipboard Library") {
             NSApp.activate(ignoringOtherApps: true)
             openWindow(id: "main")
@@ -57,6 +78,27 @@ struct MenuBarView: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q", modifiers: .command)
+    }
+
+    private func selectItem(_ item: ClipboardItem) {
+        let store = ClipboardStore(modelContext: modelContext)
+        store.copyToPasteboard(content: item.content)
+    }
+
+    private func displayTitle(for text: String, maxLength: Int = 60) -> String {
+        let singleLine = text
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let trimmed = singleLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return "(Empty item)"
+        }
+        if trimmed.count > maxLength {
+            let index = trimmed.index(trimmed.startIndex, offsetBy: maxLength)
+            return String(trimmed[..<index]) + "…"
+        }
+        return trimmed
     }
 }
 
